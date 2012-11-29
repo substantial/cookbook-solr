@@ -54,41 +54,15 @@ execute "extract_solr" do
   creates "#{solr_home}/solr.war"
 end
 
-['core0', 'core1'].each do |core|
-  core_home = "#{solr_home}/#{core}"
-
-  directory core_home do
-    owner tomcat_user
-    group tomcat_group
-  end
-
-  execute "copy_conf" do
-    command <<-EOS
-      mkdir -p #{core_home}/conf
-      cp -R #{solr_home}/template/conf/* #{core_home}/conf
-      chown -R #{tomcat_user}:#{tomcat_group} #{core_home}
-    EOS
-
-    creates "#{core_home}/conf"
-  end
-
-  directory "#{core_home}/data" do
-    owner tomcat_user
-    group tomcat_group
-    recursive true
-  end
-
-  template "#{core_home}/solrconfig.xml" do
-    owner tomcat_user
-    group tomcat_group
-    source "solrconfig.xml.erb"
-  end
-end
-
 template "#{solr_home}/solr.xml" do
   owner tomcat_user
   group tomcat_group
   source "solr.xml.erb"
+  variables(
+    :cores => node['solr']['cores']
+  )
+
+  notifies :restart, "service[tomcat]"
 end
 
 template "#{node['tomcat']['context_dir']}/solr.xml" do
