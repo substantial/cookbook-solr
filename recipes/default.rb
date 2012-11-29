@@ -52,21 +52,6 @@ execute "extract_solr" do
   EOS
 
   creates "#{solr_home}/solr.war"
-
-  #   cp dist/*.jar /usr/share/tomcat6/lib
-  #   cp dist/solrj-lib/*.jar /usr/share/tomcat6/lib
-  #   cp contrib/extraction/lib/* /usr/share/tomcat6/lib
-
-  #   if [ ! -d /var/lib/tomcat6/webapps/solr/WEB-INF/lib ]; then
-  #     sleep 5
-  #   fi
-
-  #   cp dist/*.jar /var/lib/tomcat6/webapps/solr/WEB-INF/lib
-  #   cp dist/solrj-lib/*.jar /var/lib/tomcat6/webapps/solr/WEB-INF/lib
-
-  #   chown -R #{tomcat_user}:#{tomcat_user} /var/lib/tomcat6/webapps/solr
-  # EOS
-  #creates "/var/lib/tomcat6/webapps/solr/WEB-INF/lib/apache-solr-cell-4.0.0.jar"
 end
 
 ['core0', 'core1'].each do |core|
@@ -114,40 +99,3 @@ template "#{node['tomcat']['context_dir']}/solr.xml" do
     :solr_home => solr_home
   )
 end
-
-  #template "#{node['solr']['home']}
-
-# template "/opt/solr/collection1/conf/solrconfig.xml" do
-#   owner "tomcat6"
-#   source "solrconfig.xml.erb"
-# end
-# 
-# template "/opt/solr/collection1/conf/schema.xml" do
-#   owner "tomcat6"
-#   source "schema.xml.erb"
-#   notifies :run, "execute[restart-tomcat]"
-# end
-# 
-# execute "restart-tomcat" do
-#   command "/etc/init.d/tomcat6 restart"
-#   action :nothing
-# end
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# bash "download and unzip solr" do
-#   user "root"
-#   cwd "/tmp"
-#   code <<-EOH
-#   curl #{download_url} > #{filename}
-#   mkdir #{node[:solr][:path]}
-#   tar -zxvf #{filename} -C #{node[:solr][:path]}
-#   rm #{filename}
-#   EOH
-#   not_if "test -d #{node[:solr][:path]}/apache-solr-#{node[:solr][:version]}"
-# end
