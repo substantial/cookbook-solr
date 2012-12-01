@@ -40,7 +40,7 @@ execute "extract_solr" do
     set -e
 
     cd /tmp
-    tar -zxvf #{filename}
+    tar -zxf #{filename}
 
     cd /tmp/apache-solr-#{node['solr']['version']}
 
