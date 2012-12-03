@@ -26,7 +26,7 @@ action :create do
     recursive true
   end
 
-  template "#{core_home}/solrconfig.xml" do
+  template "#{core_home}/conf/solrconfig.xml" do
     owner tomcat_user
     group tomcat_group
     source new_resource.config_source
@@ -34,7 +34,7 @@ action :create do
     notifies :restart, "service[tomcat]"
   end
 
-  template "#{core_home}/schema.xml" do
+  template "#{core_home}/conf/schema.xml" do
     owner tomcat_user
     group tomcat_group
     source new_resource.schema_source
