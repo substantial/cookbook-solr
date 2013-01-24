@@ -30,6 +30,7 @@ action :create do
     owner tomcat_user
     group tomcat_group
     source new_resource.config_source
+    variables new_resource.config_variables
 
     notifies :restart, "service[tomcat]"
   end
@@ -38,6 +39,7 @@ action :create do
     owner tomcat_user
     group tomcat_group
     source new_resource.schema_source
+    variables new_resource.schema_variables
 
     notifies :restart, "service[tomcat]"
   end
