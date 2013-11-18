@@ -22,6 +22,7 @@ remote_file "/tmp/#{filename}" do
   source download_url
   mode "0644"
   action :create_if_missing
+  not_if { File.exists?("#{solr_home}/solr.war") }
 end
 
 # cookbook_file "/etc/tomcat6/Catalina/localhost/solr.xml" do
