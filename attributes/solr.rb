@@ -8,5 +8,6 @@
 #
 
 
-default[:solr][:version] = "3.6.1"
-default[:solr][:path] = "/var/local/solr"
+default['solr']['version'] = "3.6.1"
+default['solr']['home'] = "/opt/solr"
+default['solr']['cores'] = []
