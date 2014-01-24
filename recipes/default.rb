@@ -11,23 +11,22 @@
 include_recipe "java"
 include_recipe "tomcat"
 
-filename = node[:solr][:filename] || "apache-solr-#{node[:solr][:version]}.tgz"
-download_url = node[:solr][:download_url] || "http://apache.cs.utah.edu//lucene/solr/#{node[:solr][:version]}/#{filename}"
+solr_version = node['solr']['version']
+
+filename = "solr-#{solr_version}.tgz"
+download_url = node['solr']['download_url']
+download_md5 = node['solr']['download_md5']
+solr_home = node['solr']['home']
+
 tomcat_user = node['tomcat']['user']
 tomcat_group = node['tomcat']['group']
-solr_home = node['solr']['home']
 
 remote_file "/tmp/#{filename}" do
   owner "root"
   source download_url
+  checksum download_md5
   mode "0644"
-  action :create_if_missing
-  not_if { File.exists?("#{solr_home}/solr.war") }
 end
-
-# cookbook_file "/etc/tomcat6/Catalina/localhost/solr.xml" do
-#   owner tomcat_user
-# end
 
 directory solr_home do
   owner tomcat_user
@@ -39,20 +38,39 @@ execute "extract_solr" do
   cwd "/tmp"
   command <<-EOS
     set -e
-
     cd /tmp
     tar -zxf #{filename}
-
-    cd /tmp/apache-solr-#{node['solr']['version']}
-
-    mkdir -p #{solr_home}/template/conf
-    cp -R example/solr/conf/* #{solr_home}/template/conf
-    cp -R dist/apache-solr-*.war #{solr_home}/solr.war
-
-    chown -R #{tomcat_user}:#{tomcat_group} #{solr_home}
   EOS
 
-  creates "#{solr_home}/solr.war"
+  not_if { Dir.exists?("/tmp/#{filename}") }
+end
+
+downloaded_solr_war = "/tmp/#{filename}/dist/solr-#{solr_version}.war"
+current_solr_war = "#{solr_home}/solr.war"
+
+def different_solr_version?
+  @different_version ||=begin
+    current_solr_md5 = Digest::MD5.file(current_solr_war).hexdigest
+    downloaded_solr_md5 =  Digest::MD5.file(downloaded_solr_war).hexdigest
+    current_solr_md5 == downloaded_solr_md5
+  end
+end
+
+execute "move solr" do
+  command <<-EOS
+    cp -R #{downloaded_solr_war} #{current_solr_war}
+    chown -R #{tomcat_user}:#{tomcat_group} #{solr_home}
+  EOS
+  only_if { different_solr_version? }
+end
+
+execute "create template conf" do
+  command <<-EOS
+    mkdir -p #{solr_home}/template/conf
+    cp -R /tmp/#{filename}/example/solr/collection1/conf/* #{solr_home}/template/conf
+    chown -R #{tomcat_user}:#{tomcat_group} #{solr_home}
+  EOS
+  only_if { different_solr_version? }
 end
 
 template "#{solr_home}/solr.xml" do
