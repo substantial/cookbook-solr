@@ -19,28 +19,31 @@ solr_version = node['solr']['version']
 
 raise SolrVersionError if solr_version[0].to_i < 4
 
+chef_cache_path = Chef::Config[:file_cache_path]
 downloaded_filename = "solr-#{solr_version}.tgz"
 download_url = node['solr']['download_url']
-downloaded_solr_dir = "/tmp/solr-#{solr_version}"
+downloaded_solr_dir = File.join(chef_cache_path, "solr-#{solr_version}")
+download_location = File.join(chef_cache_path, downloaded_filename)
 solr_home = node['solr']['home']
 
 tomcat_user = node['tomcat']['user']
 tomcat_group = node['tomcat']['group']
 
-remote_file "/tmp/#{downloaded_filename}" do
+execute "extract_solr" do
+  cwd chef_cache_path
+  command <<-EOS
+    set -e
+    tar -zxf #{downloaded_filename}
+  EOS
+  action :nothing
+end
+
+remote_file download_location do
   owner "root"
   source download_url
   mode "0644"
   action :create_if_missing
-end
-
-execute "extract_solr" do
-  cwd "/tmp"
-  command <<-EOS
-    set -e
-    cd /tmp
-    tar -zxf #{downloaded_filename}
-  EOS
+  notifies :run, 'execute[extract_solr]', :immediately
 end
 
 directory solr_home do
