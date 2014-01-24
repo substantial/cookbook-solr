@@ -21,7 +21,6 @@ raise SolrVersionError if solr_version[0].to_i < 4
 
 downloaded_filename = "solr-#{solr_version}.tgz"
 download_url = node['solr']['download_url']
-download_md5 = node['solr']['download_md5']
 downloaded_solr_dir = "/tmp/solr-#{solr_version}"
 solr_home = node['solr']['home']
 
@@ -31,8 +30,17 @@ tomcat_group = node['tomcat']['group']
 remote_file "/tmp/#{downloaded_filename}" do
   owner "root"
   source download_url
-  checksum download_md5
   mode "0644"
+  action :create_if_missing
+end
+
+execute "extract_solr" do
+  cwd "/tmp"
+  command <<-EOS
+    set -e
+    cd /tmp
+    tar -zxf #{downloaded_filename}
+  EOS
 end
 
 directory solr_home do
@@ -41,35 +49,22 @@ directory solr_home do
   action :create
 end
 
-execute "extract_solr" do
-  cwd "/tmp"
-  command <<-EOS
-    set -e
-    cd /tmp
-    tar -zxf #{downloaded_filename} -C #{downloaded_solr_dir}
-  EOS
-end
-
 downloaded_solr_war = "#{downloaded_solr_dir}/dist/solr-#{solr_version}.war"
 current_solr_war = "#{solr_home}/solr.war"
 
-current_solr_md5 = Digest::MD5.file(current_solr_war).hexdigest
-downloaded_solr_md5 = Digest::MD5.file(downloaded_solr_war).hexdigest
+execute "move solr stuff" do
+  command <<-EOS
+  cp -R #{downloaded_solr_war} #{current_solr_war}
+  chown -R #{tomcat_user}:#{tomcat_group} #{solr_home}
 
-unless current_solr_md5 == downloaded_solr_md5
-  execute "move solr" do
-    command <<-EOS
-    cp -R #{downloaded_solr_war} #{current_solr_war}
-    chown -R #{tomcat_user}:#{tomcat_group} #{solr_home}
-    EOS
-  end
-
-  execute "create template conf" do
-    command <<-EOS
-    mkdir -p #{solr_home}/template/conf
-    cp -R #{downloaded_solr_dir}/example/solr/collection1/conf/* #{solr_home}/template/conf
-    chown -R #{tomcat_user}:#{tomcat_group} #{solr_home}
-    EOS
+  mkdir -p #{solr_home}/template/conf
+  cp -R #{downloaded_solr_dir}/example/solr/collection1/conf/* #{solr_home}/template/conf
+  chown -R #{tomcat_user}:#{tomcat_group} #{solr_home}
+  EOS
+  not_if do
+    current_solr_md5 = Digest::MD5.file(current_solr_war).hexdigest
+    downloaded_solr_md5 = Digest::MD5.file(downloaded_solr_war).hexdigest
+    current_solr_war == downloaded_solr_md5
   end
 end
 
