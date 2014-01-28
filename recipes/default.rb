@@ -5,29 +5,46 @@
 # Copyright 2011, Substantial Inc
 #
 # All rights reserved - Do Not Redistribute
-#
-#
+
+class SolrVersionError < StandardError
+  def initialize(msg= "Only supports 4.x. Please use solr-3.x branch")
+    super(msg)
+  end
+end
 
 include_recipe "java"
 include_recipe "tomcat"
 
-filename = node[:solr][:filename] || "apache-solr-#{node[:solr][:version]}.tgz"
-download_url = node[:solr][:download_url] || "http://apache.cs.utah.edu//lucene/solr/#{node[:solr][:version]}/#{filename}"
-tomcat_user = node['tomcat']['user']
-tomcat_group = node['tomcat']['group']
+solr_version = node['solr']['version']
+
+raise SolrVersionError if solr_version[0].to_i < 4
+
+chef_cache_path = Chef::Config[:file_cache_path]
+downloaded_filename = "solr-#{solr_version}.tgz"
+download_url = node['solr']['download_url']
+downloaded_solr_dir = File.join(chef_cache_path, "solr-#{solr_version}")
+download_location = File.join(chef_cache_path, downloaded_filename)
 solr_home = node['solr']['home']
 
-remote_file "/tmp/#{filename}" do
+tomcat_user = node['tomcat']['user']
+tomcat_group = node['tomcat']['group']
+
+execute "extract_solr" do
+  cwd chef_cache_path
+  command <<-EOS
+    set -e
+    tar -zxf #{downloaded_filename}
+  EOS
+  action :nothing
+end
+
+remote_file download_location do
   owner "root"
   source download_url
   mode "0644"
   action :create_if_missing
-  not_if { File.exists?("#{solr_home}/solr.war") }
+  notifies :run, 'execute[extract_solr]', :immediately
 end
-
-# cookbook_file "/etc/tomcat6/Catalina/localhost/solr.xml" do
-#   owner tomcat_user
-# end
 
 directory solr_home do
   owner tomcat_user
@@ -35,24 +52,23 @@ directory solr_home do
   action :create
 end
 
-execute "extract_solr" do
-  cwd "/tmp"
+downloaded_solr_war = "#{downloaded_solr_dir}/dist/solr-#{solr_version}.war"
+current_solr_war = "#{solr_home}/solr.war"
+
+execute "move solr stuff" do
   command <<-EOS
-    set -e
+  cp -R #{downloaded_solr_war} #{current_solr_war}
+  chown -R #{tomcat_user}:#{tomcat_group} #{solr_home}
 
-    cd /tmp
-    tar -zxf #{filename}
-
-    cd /tmp/apache-solr-#{node['solr']['version']}
-
-    mkdir -p #{solr_home}/template/conf
-    cp -R example/solr/conf/* #{solr_home}/template/conf
-    cp -R dist/apache-solr-*.war #{solr_home}/solr.war
-
-    chown -R #{tomcat_user}:#{tomcat_group} #{solr_home}
+  mkdir -p #{solr_home}/template/conf
+  cp -R #{downloaded_solr_dir}/example/solr/collection1/conf/* #{solr_home}/template/conf
+  chown -R #{tomcat_user}:#{tomcat_group} #{solr_home}
   EOS
-
-  creates "#{solr_home}/solr.war"
+  not_if do
+    current_solr_md5 = Digest::MD5.file(current_solr_war).hexdigest
+    downloaded_solr_md5 = Digest::MD5.file(downloaded_solr_war).hexdigest
+    current_solr_war == downloaded_solr_md5
+  end
 end
 
 template "#{solr_home}/solr.xml" do
