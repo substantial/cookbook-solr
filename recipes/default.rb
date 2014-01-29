@@ -52,7 +52,7 @@ directory solr_home do
   action :create
 end
 
-excecute "reset_tomcat_cache" do
+execute "reset_tomcat_cache" do
   command <<-EOS
     service tomcat6 stop
     touch #{node['tomcat']['home']}/conf/web.xml
@@ -79,7 +79,7 @@ execute "move solr stuff" do
     downloaded_solr_md5 = Digest::MD5.file(downloaded_solr_war).hexdigest
     current_solr_war == downloaded_solr_md5
   end
-  notifies :run 'execute[reset_tomcat_cache]'
+  notifies :run, 'execute[reset_tomcat_cache]'
 end
 
 template "#{solr_home}/solr.xml" do
