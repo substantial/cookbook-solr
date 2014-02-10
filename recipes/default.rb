@@ -77,7 +77,7 @@ execute "move solr stuff" do
   not_if do
     current_solr_md5 = Digest::MD5.file(current_solr_war).hexdigest
     downloaded_solr_md5 = Digest::MD5.file(downloaded_solr_war).hexdigest
-    current_solr_war == downloaded_solr_md5
+    current_solr_md5 == downloaded_solr_md5
   end
   notifies :run, 'execute[reset_tomcat_cache]'
 end
