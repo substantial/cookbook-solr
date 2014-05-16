@@ -74,11 +74,14 @@ execute "move solr stuff" do
   cp -R #{downloaded_solr_dir}/example/solr/collection1/conf/* #{solr_home}/template/conf
   chown -R #{tomcat_user}:#{tomcat_group} #{solr_home}
   EOS
+
   not_if do
+    next false if !File.exists?(current_solr_war)
     current_solr_md5 = Digest::MD5.file(current_solr_war).hexdigest
     downloaded_solr_md5 = Digest::MD5.file(downloaded_solr_war).hexdigest
     current_solr_md5 == downloaded_solr_md5
   end
+
   notifies :run, 'execute[reset_tomcat_cache]'
 end
 
